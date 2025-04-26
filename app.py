@@ -1,11 +1,10 @@
 import streamlit as st
 import speech_recognition as sr
 import threading
-import time
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
+import pyttsx3
+
+# Initialize speech engine for feedback
+engine = pyttsx3.init()
 
 # Initialize session state variables if they don't exist
 if 'listening' not in st.session_state:
@@ -14,60 +13,36 @@ if 'command' not in st.session_state:
     st.session_state.command = ""
 if 'page' not in st.session_state:
     st.session_state.page = "home"
-if 'chart_type' not in st.session_state:
-    st.session_state.chart_type = "line"
-if 'data' not in st.session_state:
-    # Generate some sample data
-    dates = pd.date_range(start='2023-01-01', periods=30, freq='D')
-    st.session_state.data = pd.DataFrame({
-        'Date': dates,
-        'Sales': np.random.randint(100, 1000, size=30),
-        'Customers': np.random.randint(10, 100, size=30),
-        'Revenue': np.random.randint(1000, 10000, size=30)
-    })
 
 # Function to process voice commands
 def process_command(command):
     command = command.lower()
     st.session_state.command = command
-    
+
     # Navigation commands
     if "home" in command or "main" in command:
         st.session_state.page = "home"
-    elif "dashboard" in command or "chart" in command or "graph" in command:
-        st.session_state.page = "dashboard"
-    elif "data" in command or "table" in command:
-        st.session_state.page = "data"
-    elif "setting" in command:
+    elif "about" in command:
+        st.session_state.page = "about"
+    elif "settings" in command:
         st.session_state.page = "settings"
-    
-    # Chart type commands
-    if "line" in command:
-        st.session_state.chart_type = "line"
-    elif "bar" in command:
-        st.session_state.chart_type = "bar"
-    elif "scatter" in command:
-        st.session_state.chart_type = "scatter"
-    
-    # Refresh commands
-    if "refresh" in command or "update" in command:
-        st.experimental_rerun()
     
     # Stop listening command
     if "stop listening" in command:
         st.session_state.listening = False
 
+    # Provide feedback to the user
+    engine.say(f"Command recognized: {command}")
+    engine.runAndWait()
+
 # Function to listen for voice commands
 def voice_listener():
     r = sr.Recognizer()
-    while st.session_state.listening:
-        try:
-            # Use the default microphone as the audio source
-            with sr.Microphone() as source:
-                st.session_state.status = "Listening..."
-                # Adjust for ambient noise
+    with sr.Microphone() as source:
+        while st.session_state.listening:
+            try:
+                # Adjust for ambient noise and listen
                 r.adjust_for_ambient_noise(source)
-                # Listen for the first phrase and extract it into audio data
                 audio = r.listen(source, timeout=5, phrase_time_limit=5)
                 st.session_state.status = "Recognizing..."
                 
@@ -75,16 +50,11 @@ def voice_listener():
                 command = r.recognize_google(audio)
                 process_command(command)
                 
-        except sr.WaitTimeoutError:
-            st.session_state.status = "Timeout. Listening again..."
-        except sr.UnknownValueError:
-            st.session_state.status = "Could not understand audio. Listening again..."
-        except sr.RequestError as e:
-            st.session_state.status = f"Could not request results; {e}. Listening again..."
-        except Exception as e:
-            st.session_state.status = f"Error: {e}. Listening again..."
-            
-        time.sleep(0.1)  # Short sleep to prevent CPU overload
+            except sr.UnknownValueError:
+                st.session_state.status = "Could not understand audio."
+            except sr.RequestError as e:
+                st.session_state.status = f"Error: {e}."
+            time.sleep(0.1)
 
 # Start or stop voice listening
 def toggle_listening():
@@ -124,88 +94,20 @@ with st.sidebar:
     # Voice command instructions
     st.subheader("Voice Commands")
     st.write("Try saying:")
-    st.write("- 'home' or 'main' to go to home page")
-    st.write("- 'dashboard' or 'chart' to see visualizations")
-    st.write("- 'data' or 'table' to see the data")
-    st.write("- 'settings' to go to settings page")
-    st.write("- 'line', 'bar', or 'scatter' to change chart type")
-    st.write("- 'refresh' or 'update' to refresh the page")
+    st.write("- 'home' or 'main' to go to the home page")
+    st.write("- 'about' to go to the about page")
+    st.write("- 'settings' to go to the settings page")
     st.write("- 'stop listening' to stop voice recognition")
 
 # Main content area
 if st.session_state.page == "home":
-    st.header("Home")
-    st.write("Welcome to the voice-controlled dashboard! Use the voice commands to navigate and control the dashboard.")
-    st.write("Click 'Start Listening' in the sidebar to begin voice control.")
+    st.header("Home Page")
+    st.write("Welcome to the Voice-Controlled Dashboard! Use the voice commands to navigate.")
     
-    # Display current time
-    now = datetime.now()
-    st.write(f"Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+elif st.session_state.page == "about":
+    st.header("About Page")
+    st.write("This is a simple dashboard that is controlled by your voice. Use the sidebar to control the voice recognition.")
     
-    # Display a summary of the data
-    st.subheader("Data Summary")
-    st.write(f"Total records: {len(st.session_state.data)}")
-    st.write(f"Date range: {st.session_state.data['Date'].min().strftime('%Y-%m-%d')} to {st.session_state.data['Date'].max().strftime('%Y-%m-%d')}")
-    st.write(f"Average sales: {st.session_state.data['Sales'].mean():.2f}")
-    st.write(f"Average revenue: ${st.session_state.data['Revenue'].mean():.2f}")
-
-elif st.session_state.page == "dashboard":
-    st.header("Dashboard")
-    
-    # Show current chart type
-    st.write(f"Current chart type: {st.session_state.chart_type}")
-    
-    # Visualize the data based on chart type
-    if st.session_state.chart_type == "line":
-        st.line_chart(st.session_state.data.set_index('Date')[['Sales', 'Revenue']])
-    elif st.session_state.chart_type == "bar":
-        st.bar_chart(st.session_state.data.set_index('Date')[['Sales', 'Customers']])
-    elif st.session_state.chart_type == "scatter":
-        fig, ax = plt.subplots()
-        ax.scatter(st.session_state.data['Sales'], st.session_state.data['Revenue'])
-        ax.set_xlabel('Sales')
-        ax.set_ylabel('Revenue')
-        ax.set_title('Sales vs Revenue')
-        st.pyplot(fig)
-    
-    # Display some metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Sales", f"{st.session_state.data['Sales'].sum()}")
-    with col2:
-        st.metric("Total Customers", f"{st.session_state.data['Customers'].sum()}")
-    with col3:
-        st.metric("Total Revenue", f"${st.session_state.data['Revenue'].sum()}")
-
-elif st.session_state.page == "data":
-    st.header("Data")
-    st.write("Here's the raw data:")
-    st.dataframe(st.session_state.data)
-    
-    # Allow filtering data
-    st.subheader("Filter Data")
-    min_sales = st.slider("Minimum Sales", 
-                         min_value=int(st.session_state.data['Sales'].min()),
-                         max_value=int(st.session_state.data['Sales'].max()),
-                         value=int(st.session_state.data['Sales'].min()))
-    
-    filtered_data = st.session_state.data[st.session_state.data['Sales'] >= min_sales]
-    st.write(f"Filtered data ({len(filtered_data)} rows):")
-    st.dataframe(filtered_data)
-
 elif st.session_state.page == "settings":
-    st.header("Settings")
-    st.write("Voice recognition settings:")
-    
-    # Settings options
-    st.checkbox("Enable notifications", value=True)
-    st.checkbox("Dark mode", value=False)
-    selected_language = st.selectbox("Recognition language", 
-                                 options=["English", "Spanish", "French", "German", "Chinese"],
-                                 index=0)
-    st.write(f"Selected language: {selected_language}")
-    
-    # About section
-    st.subheader("About")
-    st.write("Voice-Controlled Dashboard - v1.0")
-    st.write("Created with Streamlit and SpeechRecognition")
+    st.header("Settings Page")
+    st.write("This page can contain settings for the application.")
