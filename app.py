@@ -45,7 +45,7 @@ def process_command(command):
         speak("Showing data table.")
     elif "setting" in command:
         st.session_state.page = "settings"
-        speak("Going to settings page.")
+        speak("Going to settings page")
     
     # Chart type commands
     if "line" in command:
