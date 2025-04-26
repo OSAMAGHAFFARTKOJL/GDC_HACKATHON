@@ -1,7 +1,3 @@
-streamlit 
-SpeechRecognition 
-numpy 
+streamlit  
 pandas 
-matplotlib
-pyttsx3
-gTTS 
+plotly
