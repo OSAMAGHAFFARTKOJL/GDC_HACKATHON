@@ -1,9 +1,16 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import base64
+import tempfile
 import speech_recognition as sr
 import io
 
-# JavaScript for recording audio
+st.set_page_config(page_title="🎙️ Live Voice Recorder", layout="centered")
+
+st.title("🎙️ Real-Time Voice Controlled Dashboard")
+st.write("Press **Start Recording**, say something, then **Stop Recording**. Your speech will be shown below!")
+
+# Inject JavaScript to record audio
 record_audio_js = """
 <script>
 let mediaRecorder;
@@ -19,6 +26,8 @@ async function startRecording() {
     });
 
     mediaRecorder.start();
+    console.log("Recording started...");
+    document.getElementById('status').innerText = '🎙️ Recording...';
 }
 
 async function stopRecording() {
@@ -34,6 +43,7 @@ async function stopRecording() {
         });
 
         mediaRecorder.stop();
+        document.getElementById('status').innerText = '🛑 Recording stopped.';
     });
 }
 
@@ -42,18 +52,62 @@ window.stopRecording = stopRecording;
 </script>
 """
 
-st.title("🎤 Real-Time Voice Controlled Dashboard")
+# Display recording status
+status_placeholder = st.empty()
+status_placeholder.markdown("<div id='status'>⌛ Idle</div>", unsafe_allow_html=True)
 
+# Inject JavaScript into the page
 components.html(record_audio_js)
 
-start = st.button("Start Recording")
-stop = st.button("Stop Recording")
+# Session states to keep track
+if 'recording' not in st.session_state:
+    st.session_state['recording'] = False
+if 'audio_data' not in st.session_state:
+    st.session_state['audio_data'] = None
 
-if start:
-    components.html("<script>startRecording()</script>")
+# Start/Stop Buttons
+col1, col2 = st.columns(2)
 
-if stop:
-    audio_base64 = components.html("<script>stopRecording().then(base64 => { window.parent.postMessage({type: 'audio', data: base64}, '*'); });</script>")
-    # Then listen for the postMessage and decode the audio!
+with col1:
+    if st.button("🎙️ Start Recording"):
+        components.html("<script>startRecording()</script>")
+        st.session_state['recording'] = True
 
-st.info("Press 'Start' to record and 'Stop' to send audio to the backend.")
+with col2:
+    if st.button("🛑 Stop Recording"):
+        components.html("""
+        <script>
+        stopRecording().then(base64 => {
+            const streamlitMsg = {
+                isStreamlitMessage: true,
+                type: "streamlit:recordedAudio",
+                data: base64
+            };
+            window.parent.postMessage(streamlitMsg, "*");
+        });
+        </script>
+        """)
+        st.session_state['recording'] = False
+
+# Handle the custom Streamlit event
+audio_data = st.file_uploader("Upload Recorded Audio (Optional if auto doesn't work)", type=["wav", "mp3", "m4a"])
+
+if audio_data is not None:
+    st.audio(audio_data)
+
+    # Recognize Speech
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(audio_data) as source:
+        audio = recognizer.record(source)
+
+    try:
+        text = recognizer.recognize_google(audio)
+        st.success(f"Recognized Speech: {text}")
+    except Exception as e:
+        st.error(f"Error recognizing speech: {e}")
+
+# Just a little printing live status
+if st.session_state['recording']:
+    st.info("Recording... Speak into your microphone 🎤")
+else:
+    st.info("Click 'Start Recording' to begin.")
