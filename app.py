@@ -3,214 +3,119 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime, timedelta
-import threading
-import time
-import random
-import pyttsx3
-import requests
-import json
-from PIL import Image
-import io
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import whisper
-import sounddevice as sd
 
 # === WHISPER SETUP ===
-whisper_model = whisper.load_model("base")  # Options: tiny, base, small, medium, large
+whisper_model = whisper.load_model("base")  # you can use "tiny", "small" for faster
 
 # === PAGE CONFIG ===
 st.set_page_config(
-    page_title="AI Voice-Controlled Dashboard",
+    page_title="Voice Controlled Dashboard",
     page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # === INITIALIZE SESSION STATE ===
-if 'listening' not in st.session_state:
-    st.session_state.listening = False
-if 'last_command' not in st.session_state:
-    st.session_state.last_command = "No command received yet"
 if 'active_tab' not in st.session_state:
     st.session_state.active_tab = "Dashboard"
-if 'tts_enabled' not in st.session_state:
-    st.session_state.tts_enabled = True
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
+if 'last_command' not in st.session_state:
+    st.session_state.last_command = "No command yet"
 
 # === FUNCTIONS ===
 
-# Text to Speech
-def text_to_speech(text):
-    if st.session_state.tts_enabled:
-        engine = pyttsx3.init()
-        engine.say(text)
-        engine.runAndWait()
-
-# Record + Transcribe using Whisper
-def recognize_speech():
-    samplerate = 16000  # Whisper expects 16kHz
-    duration = 5  # seconds
-    st.info("🎙️ Listening... Speak now!")
-    try:
-        recording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.float32)
-        sd.wait()
-        audio_data = np.squeeze(recording)
-        result = whisper_model.transcribe(audio_data, fp16=False)
+# Function to process uploaded voice
+def recognize_uploaded_audio(uploaded_file):
+    if uploaded_file is not None:
+        with open("temp_audio.wav", "wb") as f:
+            f.write(uploaded_file.read())
+        
+        result = whisper_model.transcribe("temp_audio.wav")
         command = result['text'].strip().lower()
         return command
-    except Exception as e:
-        return f"Error occurred: {str(e)}"
-
-# Voice Control Listening Loop
-def listening_thread():
-    while st.session_state.listening:
-        command = recognize_speech()
-        if command and "error" not in command.lower():
-            st.session_state.last_command = command
-
-            # Commands
-            if "dashboard" in command or "home" in command:
-                st.session_state.active_tab = "Dashboard"
-                text_to_speech("Showing dashboard view")
-            elif "customer" in command or "customers" in command:
-                st.session_state.active_tab = "Customer Analytics"
-                text_to_speech("Showing customer analytics")
-            elif "product" in command or "products" in command or "inventory" in command:
-                st.session_state.active_tab = "Product Analytics"
-                text_to_speech("Showing product analytics")
-            elif "prediction" in command or "predict" in command or "forecast" in command:
-                st.session_state.active_tab = "Predictive Analytics"
-                text_to_speech("Showing predictive analytics")
-            elif "setting" in command or "settings" in command or "configuration" in command:
-                st.session_state.active_tab = "Settings"
-                text_to_speech("Opening settings")
-            elif "help" in command:
-                st.session_state.active_tab = "Help"
-                text_to_speech("Showing help information")
-            elif "stop listening" in command or "stop" in command:
-                st.session_state.listening = False
-                text_to_speech("Voice control deactivated")
-        time.sleep(0.1)
-
-# Toggle Button for Listening
-def toggle_listening():
-    st.session_state.listening = not st.session_state.listening
-    if st.session_state.listening:
-        text_to_speech("Voice control activated. What would you like to see?")
-        threading.Thread(target=listening_thread, daemon=True).start()
     else:
-        text_to_speech("Voice control deactivated.")
+        return "No audio uploaded"
 
 # Dummy Data Creation
 if 'data' not in st.session_state:
-    dates = pd.date_range(start=datetime.now() - timedelta(days=30), end=datetime.now(), freq='D')
-    sales = np.random.randint(100, 1000, size=len(dates))
-    traffic = np.random.randint(1000, 5000, size=len(dates))
-    conversion = np.random.uniform(0.01, 0.05, size=len(dates))
-    st.session_state.data = pd.DataFrame({
-        'date': dates,
-        'sales': sales,
-        'traffic': traffic,
-        'conversion_rate': conversion
-    })
-
-    # Customer Data
-    regions = ['North', 'South', 'East', 'West', 'Central']
-    categories = ['Electronics', 'Clothing', 'Food', 'Books', 'Home Goods']
-    n_customers = 100
-    customer_data = {
-        'customer_id': range(1, n_customers + 1),
-        'age': np.random.randint(18, 70, size=n_customers),
-        'total_spent': np.random.uniform(100, 5000, size=n_customers),
-        'purchases': np.random.randint(1, 50, size=n_customers),
-        'loyalty_score': np.random.uniform(0, 100, size=n_customers),
-        'days_since_last_purchase': np.random.randint(1, 365, size=n_customers),
-        'region': np.random.choice(regions, size=n_customers),
-        'preferred_category': np.random.choice(categories, size=n_customers)
-    }
-    st.session_state.customer_data = pd.DataFrame(customer_data)
+    dates = pd.date_range(start=pd.Timestamp.today() - pd.Timedelta(days=30), periods=30)
+    sales = np.random.randint(100, 1000, size=30)
+    customers = np.random.randint(10, 100, size=30)
+    st.session_state.data = pd.DataFrame({'Date': dates, 'Sales': sales, 'Customers': customers})
 
 # === SIDEBAR ===
-with st.sidebar:
-    st.header("Navigation")
-    st.button("🎙️ Toggle Voice Control", on_click=toggle_listening, key="voice_control_button")
+st.sidebar.title("🎙️ Voice Control")
 
-    st.markdown(f"**Listening:** {'🟢 Active' if st.session_state.listening else '🔴 Inactive'}")
-    st.markdown(f"**Last Command:** {st.session_state.last_command}")
+# Upload an audio file
+uploaded_audio = st.sidebar.file_uploader("Upload your voice (WAV/MP3)", type=["wav", "mp3", "m4a"])
 
-    st.markdown("---")
-    if st.button("Dashboard"):
-        st.session_state.active_tab = "Dashboard"
-    if st.button("Customer Analytics"):
-        st.session_state.active_tab = "Customer Analytics"
-    if st.button("Product Analytics"):
-        st.session_state.active_tab = "Product Analytics"
-    if st.button("Predictive Analytics"):
-        st.session_state.active_tab = "Predictive Analytics"
-    if st.button("Settings"):
-        st.session_state.active_tab = "Settings"
-    if st.button("Help"):
-        st.session_state.active_tab = "Help"
+# Button to process voice
+if st.sidebar.button("Process Voice Command"):
+    if uploaded_audio:
+        command = recognize_uploaded_audio(uploaded_audio)
+        st.session_state.last_command = command
+        st.sidebar.success(f"Recognized: {command}")
+
+        # Switch tabs based on command
+        if "dashboard" in command or "home" in command:
+            st.session_state.active_tab = "Dashboard"
+        elif "customer" in command:
+            st.session_state.active_tab = "Customer Analytics"
+        elif "product" in command or "products" in command:
+            st.session_state.active_tab = "Product Analytics"
+        elif "help" in command:
+            st.session_state.active_tab = "Help"
+        else:
+            st.sidebar.warning("Command not recognized. Try again!")
+
+# Show current tab
+st.sidebar.markdown(f"**Current Tab:** {st.session_state.active_tab}")
+st.sidebar.markdown(f"**Last Command:** {st.session_state.last_command}")
+
+# Manual Navigation
+st.sidebar.title("Manual Navigation")
+if st.sidebar.button("Go to Dashboard"):
+    st.session_state.active_tab = "Dashboard"
+if st.sidebar.button("Go to Customer Analytics"):
+    st.session_state.active_tab = "Customer Analytics"
+if st.sidebar.button("Go to Product Analytics"):
+    st.session_state.active_tab = "Product Analytics"
+if st.sidebar.button("Go to Help"):
+    st.session_state.active_tab = "Help"
 
 # === MAIN CONTENT ===
+st.title("🎯 Voice-Controlled Analytics Dashboard")
 
-# Title
-st.title("🎙️ AI Voice-Controlled Dashboard")
-
-# Different Tabs Content
 if st.session_state.active_tab == "Dashboard":
-    st.subheader("📊 Business Overview")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Sales", f"${st.session_state.data['sales'].sum():,.2f}")
-    col2.metric("Total Traffic", f"{st.session_state.data['traffic'].sum():,}")
-    col3.metric("Avg Conversion", f"{st.session_state.data['conversion_rate'].mean() * 100:.2f}%")
-
-    st.line_chart(st.session_state.data.set_index('date')[['sales', 'traffic']])
+    st.header("📊 Business Overview")
+    st.line_chart(st.session_state.data.set_index('Date')[['Sales']])
+    st.bar_chart(st.session_state.data.set_index('Date')[['Customers']])
 
 elif st.session_state.active_tab == "Customer Analytics":
-    st.subheader("🧑‍🤝‍🧑 Customer Analytics")
-    st.dataframe(st.session_state.customer_data)
+    st.header("🧑‍🤝‍🧑 Customer Analytics")
+    st.write("This is where customer data would go.")
+    st.dataframe(st.session_state.data[['Date', 'Customers']])
 
 elif st.session_state.active_tab == "Product Analytics":
-    st.subheader("📦 Product Analytics")
-    # Simulate products if needed
-    st.write("No product data available (Placeholder)")
-
-elif st.session_state.active_tab == "Predictive Analytics":
-    st.subheader("📈 Predictive Analytics")
-    # Very basic forecast
-    forecast = st.session_state.data.copy()
-    forecast['forecast'] = forecast['sales'].rolling(7).mean()
-    st.line_chart(forecast.set_index('date')[['sales', 'forecast']])
-
-elif st.session_state.active_tab == "Settings":
-    st.subheader("⚙️ Settings")
-    tts_enabled = st.toggle("Enable Text-to-Speech", value=st.session_state.tts_enabled)
-    if tts_enabled != st.session_state.tts_enabled:
-        st.session_state.tts_enabled = tts_enabled
-        if tts_enabled:
-            text_to_speech("Text-to-Speech enabled")
+    st.header("📦 Product Analytics")
+    st.write("This is where product data would go.")
+    sample_products = pd.DataFrame({
+        "Product": ["Product A", "Product B", "Product C"],
+        "Sales": [1200, 850, 640],
+        "Stock Left": [30, 45, 20]
+    })
+    st.dataframe(sample_products)
 
 elif st.session_state.active_tab == "Help":
-    st.subheader("❓ Help")
+    st.header("❓ Help - Voice Commands")
     st.markdown("""
-    **Voice Commands Supported**:
-    - "Show dashboard" or "Home"
-    - "Show customers" or "Customer analytics"
-    - "Show products" or "Product analytics"
-    - "Show predictions" or "Forecast"
-    - "Open settings" or "Settings"
-    - "Help"
-    - "Stop listening"
+    You can say:
+    - **Dashboard** or **Home** → Main Overview
+    - **Customer Analytics** → See customer stats
+    - **Product Analytics** → See product stats
+    - **Help** → Show help instructions
     """)
 
 # === FOOTER ===
 st.markdown("---")
-st.caption("Built with ❤️ using Streamlit, Whisper AI, and Python")
+st.caption("Built using Streamlit and OpenAI Whisper 🔥")
