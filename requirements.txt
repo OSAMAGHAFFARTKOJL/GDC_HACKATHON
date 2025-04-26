@@ -1,7 +1,6 @@
 streamlit
-openai-whisper
+SpeechRecognition
 gTTS
-matplotlib
-pandas
 numpy
-streamlit-audio-recorder
+pandas
+matplotlib
