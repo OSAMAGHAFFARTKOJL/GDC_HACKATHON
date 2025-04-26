@@ -1,5 +1,5 @@
 streamlit 
-speech_recognition 
+SpeechRecognition 
 numpy 
 pandas 
 matplotlib
