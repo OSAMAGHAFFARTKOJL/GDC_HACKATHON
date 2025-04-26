@@ -1,4 +1,7 @@
-streamlit 
-transformers
-torch
-
+streamlit
+openai-whisper
+gTTS
+matplotlib
+pandas
+numpy
+streamlit-audio-recorder
