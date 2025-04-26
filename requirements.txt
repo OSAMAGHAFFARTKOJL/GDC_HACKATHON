@@ -1,7 +1,10 @@
-speechrecognition 
-pyttsx3 
-pyaudio 
-transformers 
-torch 
-pandas 
+streamlit
+speechrecognition
+pyttsx3
+pyaudio
+transformers
+torch
+torchvision
+torchaudio
+pandas
 plotly
