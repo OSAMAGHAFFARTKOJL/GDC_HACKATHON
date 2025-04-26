@@ -1,6 +1,5 @@
 import streamlit as st
-import speech_recognition as sr
-from gtts import gTTS
+import whisper
 import os
 import threading
 import time
@@ -8,8 +7,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+from gtts import gTTS
+import tempfile
 
-# Initialize session state variables if they don't exist
+# Initialize Whisper model
+@st.cache_resource
+def load_model():
+    return whisper.load_model("base")  # You can also use "small", "medium", etc.
+
+model = load_model()
+
+# Initialize session state
 if 'listening' not in st.session_state:
     st.session_state.listening = False
 if 'command' not in st.session_state:
@@ -19,7 +27,6 @@ if 'page' not in st.session_state:
 if 'chart_type' not in st.session_state:
     st.session_state.chart_type = "line"
 if 'data' not in st.session_state:
-    # Generate some sample data
     dates = pd.date_range(start='2023-01-01', periods=30, freq='D')
     st.session_state.data = pd.DataFrame({
         'Date': dates,
@@ -68,81 +75,54 @@ def process_command(command):
         st.session_state.listening = False
         speak("Stopped listening.")
 
-# Function to listen for voice commands
-def voice_listener():
-    r = sr.Recognizer()
-    while st.session_state.listening:
-        try:
-            # Use the default microphone as the audio source
-            with sr.Microphone() as source:
-                st.session_state.status = "Listening..."
-                # Adjust for ambient noise
-                r.adjust_for_ambient_noise(source)
-                # Listen for the first phrase and extract it into audio data
-                audio = r.listen(source, timeout=5, phrase_time_limit=5)
-                st.session_state.status = "Recognizing..."
-                
-                # Recognize speech using Google Speech Recognition
-                command = r.recognize_google(audio)
-                process_command(command)
-                
-        except sr.WaitTimeoutError:
-            st.session_state.status = "Timeout. Listening again..."
-        except sr.UnknownValueError:
-            st.session_state.status = "Could not understand audio. Listening again..."
-        except sr.RequestError as e:
-            st.session_state.status = f"Could not request results; {e}. Listening again..."
-        except Exception as e:
-            st.session_state.status = f"Error: {e}. Listening again..."
-            
-        time.sleep(0.1)  # Short sleep to prevent CPU overload
-
 # Function to convert text to speech
 def speak(text):
     tts = gTTS(text=text, lang='en')
     tts.save("output.mp3")
+    os.system("mpg321 output.mp3")  # For Linux; on Windows, use "start output.mp3"
+
+# Function to handle audio recording and transcription
+def record_and_transcribe():
+    st.session_state.status = "Waiting for audio recording..."
     
-    # For Linux, use mpg321 or another audio player
-    os.system("mpg321 output.mp3")  # This is for Linux systems. For Windows, you can use "start output.mp3".
+    # Streamlit's built-in audio recorder
+    audio_bytes = st.audio_recorder("Record a command and click submit:", format="audio/wav")
 
-# Start or stop voice listening
-def toggle_listening():
-    if st.session_state.listening:
-        st.session_state.listening = False
-        st.session_state.status = "Stopped listening."
-        speak("Stopped listening.")
-    else:
-        st.session_state.listening = True
-        st.session_state.status = "Starting to listen..."
-        speak("Starting to listen...")
-        threading.Thread(target=voice_listener, daemon=True).start()
+    if audio_bytes is not None:
+        st.session_state.status = "Processing audio..."
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+            temp_audio.write(audio_bytes)
+            temp_audio_path = temp_audio.name
+        
+        # Transcribe using Whisper
+        result = model.transcribe(temp_audio_path)
+        command = result["text"]
+        process_command(command)
+        
+        # Clean up temporary file
+        os.remove(temp_audio_path)
+        
+        st.session_state.status = "Command recognized!"
 
-# Streamlit app layout
-st.title("Voice-Controlled Dashboard")
+# Streamlit App Layout
+st.title("Voice-Controlled Dashboard (Whisper Version)")
 
-# Sidebar with controls
+# Sidebar
 with st.sidebar:
     st.header("Voice Controls")
     
-    # Button to start/stop listening
-    if st.session_state.listening:
-        button_text = "Stop Listening"
-    else:
-        button_text = "Start Listening"
+    if st.button("Record Command"):
+        record_and_transcribe()
     
-    st.button(button_text, on_click=toggle_listening)
-    
-    # Display listening status
     if 'status' in st.session_state:
         st.write(f"Status: {st.session_state.status}")
     
-    # Display last recognized command
     if st.session_state.command:
         st.write(f"Last command: {st.session_state.command}")
     
     st.divider()
     
-    # Voice command instructions
     st.subheader("Voice Commands")
     st.write("Try saying:")
     st.write("- 'home' or 'main' to go to home page")
@@ -153,17 +133,13 @@ with st.sidebar:
     st.write("- 'refresh' or 'update' to refresh the page")
     st.write("- 'stop listening' to stop voice recognition")
 
-# Main content area
+# Pages
 if st.session_state.page == "home":
     st.header("Home")
     st.write("Welcome to the voice-controlled dashboard! Use the voice commands to navigate and control the dashboard.")
-    st.write("Click 'Start Listening' in the sidebar to begin voice control.")
-    
-    # Display current time
+    st.write("Click 'Record Command' in the sidebar to start.")
     now = datetime.now()
     st.write(f"Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Display a summary of the data
     st.subheader("Data Summary")
     st.write(f"Total records: {len(st.session_state.data)}")
     st.write(f"Date range: {st.session_state.data['Date'].min().strftime('%Y-%m-%d')} to {st.session_state.data['Date'].max().strftime('%Y-%m-%d')}")
@@ -172,11 +148,8 @@ if st.session_state.page == "home":
 
 elif st.session_state.page == "dashboard":
     st.header("Dashboard")
-    
-    # Show current chart type
     st.write(f"Current chart type: {st.session_state.chart_type}")
     
-    # Visualize the data based on chart type
     if st.session_state.chart_type == "line":
         st.line_chart(st.session_state.data.set_index('Date')[['Sales', 'Revenue']])
     elif st.session_state.chart_type == "bar":
@@ -189,7 +162,6 @@ elif st.session_state.page == "dashboard":
         ax.set_title('Sales vs Revenue')
         st.pyplot(fig)
     
-    # Display some metrics
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Sales", f"{st.session_state.data['Sales'].sum()}")
@@ -200,10 +172,8 @@ elif st.session_state.page == "dashboard":
 
 elif st.session_state.page == "data":
     st.header("Data")
-    st.write("Here's the raw data: ")
     st.dataframe(st.session_state.data)
     
-    # Allow filtering data
     st.subheader("Filter Data")
     min_sales = st.slider("Minimum Sales", 
                          min_value=int(st.session_state.data['Sales'].min()),
@@ -211,14 +181,10 @@ elif st.session_state.page == "data":
                          value=int(st.session_state.data['Sales'].min()))
     
     filtered_data = st.session_state.data[st.session_state.data['Sales'] >= min_sales]
-    st.write(f"Filtered data ({len(filtered_data)} rows):")
     st.dataframe(filtered_data)
 
 elif st.session_state.page == "settings":
     st.header("Settings")
-    st.write("Voice recognition settings:")
-    
-    # Settings options
     st.checkbox("Enable notifications", value=True)
     st.checkbox("Dark mode", value=False)
     selected_language = st.selectbox("Recognition language", 
@@ -226,7 +192,7 @@ elif st.session_state.page == "settings":
                                  index=0)
     st.write(f"Selected language: {selected_language}")
     
-    # About section
     st.subheader("About")
-    st.write("Voice-Controlled Dashboard - v1.0")
-    st.write("Created with Streamlit and SpeechRecognition")
+    st.write("Voice-Controlled Dashboard - Whisper Version")
+    st.write("Created with Streamlit and OpenAI Whisper")
+
