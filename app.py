@@ -164,7 +164,7 @@ def main():
     st.markdown("Say 'show line chart', 'show bar chart', or 'show pie chart' to control the dashboard.")
 
     # Layout
-    col1, col gifts = st.columns([3, 1])
+    col1, col gifts == st.columns([3, 1])
 
     with col1:
         # Chart display
