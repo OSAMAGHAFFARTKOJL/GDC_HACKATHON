@@ -4,3 +4,4 @@ gTTS
 numpy
 pandas
 matplotlib
+streamlit-javascript
