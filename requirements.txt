@@ -4,3 +4,4 @@ numpy
 pandas 
 matplotlib
 pyttsx3
+gTTS 
