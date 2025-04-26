@@ -101,7 +101,9 @@ def voice_listener():
 def speak(text):
     tts = gTTS(text=text, lang='en')
     tts.save("output.mp3")
-    os.system("start output.mp3")  # For Windows, use 'start', for Linux use 'mpg321 output.mp3'
+    
+    # For Linux, use mpg321 or another audio player
+    os.system("mpg321 output.mp3")  # This is for Linux systems. For Windows, you can use "start output.mp3".
 
 # Start or stop voice listening
 def toggle_listening():
