@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Enhanced Voice Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #4a6cf7;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .voice-status {
+            display: flex;
+            align-items: center;
+        }
+        .mic-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #ccc;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.active {
+            background-color: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        .voice-feedback {
+            margin-left: 20px;
+            font-style: italic;
+            opacity: 0.8;
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .widgets-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .widget {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            height: 200px;
+            transition: all 0.3s ease;
+        }
+        .widget.expanded {
+            grid-column: span 2;
+            height: 400px;
+        }
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .widget-title {
+            font-weight: 600;
+            margin: 0;
+        }
+        .widget-content {
+            height: calc(100% - 40px);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .chart {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .commands-list {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .commands-list h3 {
+            margin-top: 0;
+        }
+        .help-title {
+            cursor: pointer;
+            color: #4a6cf7;
+        }
+        #commandsModal, #aiAssistantModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .ai-assistant-container {
+            width: 80%;
+            max-width: 800px;
+            margin: 0 auto;
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        .user-message {
+            justify-content: flex-end;
+        }
+        .assistant-message {
+            justify-content: flex-start;
+        }
+        .message-bubble {
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 70%;
+        }
+        .user-bubble {
+            background-color: #4a6cf7;
+            color: white;
+        }
+        .assistant-bubble {
+            background-color: #e9e9eb;
+            color: #333;
+        }
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #4a6cf7;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .history-container {
+            margin-top: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .history-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .search-container {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        .search-container input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .search-container植物 {
+            background-color: #4a6cf7;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .search-results {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .search-result {
+            background-color: white;
+            border-radius: 4px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .search-result:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .search-result h4 {
+            margin: 0 0 5px 0;
+            color: #4a6cf7;
+        }
+        .search-result p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .ai-thinking {
+            font-style: italic;
+            color: #666;
+            margin: 10px 0;
+        }
+        #aiAssistantWidget {
+            overflow: hidden;
+        }
+        .task-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .task-checkbox {
+            margin-right: 10px;
+        }
+        .task-completed {
+            text-decoration: line-through;
+            color: #999;
+        }
+        .task-text {
+            flex: 1;
+        }
+        .task-delete {
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        .conversation-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Voice Dashboard</h1>
+            <div class="voice-status">
+                <div class="status-indicator" id="voiceStatus"></div>
+                <svg class="mic-icon" id="micButton" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+                <div class="voice-feedback" id="voiceFeedback">Click the mic to start</div>
+            </div>
+            <div class="help-title" id="helpButton">Show Commands</div>
+        </header>
+
+        <div class="widgets-container">
+            <div class="widget" id="aiAssistantWidget">
+                <div class="widget-header">
+                    <h3 class="widget-title">AI Assistant</h3>
+                    <span>Ask me anything</span>
+                </div>
+                <div class="widget-content">
+                    <div class="conversation-log" id="aiConversationLog">
+                        <div class="chat-message assistant-message">
+                            <div class="message-bubble assistant-bubble">
+                                Hello! I'm your AI assistant. How can I help you today?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="weatherWidget">
+                <div class="widget-header">
+                    <h3 class="widget-title">Weather</h3>
+                    <span id="weatherLocation">📍 Current Location</span>
+                </div>
+                <div class="widget-content">
+                    <div style="display: flex; align-items: center; justify-content: space-around;">
+                        <div style="font-size: 3em;" id="weatherIcon">☀️</div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.8em; font-weight: bold;" id="weatherTemp">75°F</div>
+                            <div id="weatherCondition">Sunny</div>
+                        </div>
+                    </div>
+                    <div id="weatherForecast" style="margin-top: 15px; font-size: 0.9em;">
+                        <div class="history-container" id="weatherHistory">
+                            <div class="history-item">Yesterday: 73°F, Partly Cloudy</div>
+                            <div class="history-item">2 Days Ago: 68°F, Rainy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="searchWidget">
+                <div class="widget-header">
+                    <h3 class="widget-title">Web Search</h3>
+                    <span>Find information</span>
+                </div>
+                <div class="widget-content">
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search the web...">
+                        <button id="searchButton">Search</button>
+                    </div>
+                    <div class="search-results" id="searchResults">
+                        <!-- Search results will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="tasksWidget">
+                <div class="widget-header">
+                    <h3 class="widget-title">Tasks</h3>
+                    <span id="taskCount">3 Remaining</span>
+                </div>
+                <div class="widget-content">
+                    <ul class="task-list" id="taskList">
+                        <li class="task-item">
+                            <input type="checkbox" class="task-checkbox">
+                            <span class="task-text">Complete project proposal</span>
+                            <span class="task-delete">×</span>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" class="task-checkbox">
+                            <span class="task-text">Schedule team meeting</span>
+                            <span class="task-delete">×</span>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" class="task-checkbox">
+                            <span class="task-text">Review quarterly results</span>
+                            <span class="task-delete">×</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="commands-list">
+            <h3>Voice Commands</h3>
+            <p>Try saying: "Ask AI about the weather forecast", "Search for latest news", "Add task finish project", or "Expand AI assistant"</p>
+        </div>
+    </div>
+
+    <div id="commandsModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">×</span>
+            <h2>Available Voice Commands</h2>
+            
+            <h3>General</h3>
+            <ul>
+                <li>"Help" - Show this help menu</li>
+                <li>"Close" - Close any open dialogs</li>
+                <li>"Expand [widget name]" - Make a widget larger</li>
+                <li>"Collapse [widget name]" - Return widget to normal size</li>
+            </ul>
+            
+            <h3>AI Assistant</h3>
+            <ul>
+                <li>"Ask AI [your question]" - Ask a question to the AI</li>
+                <li>"Summarize [text or topic]" - Get a summary</li>
+                <li>"Write [content description]" - Generate text content</li>
+                <li>"Explain [concept]" - Get an explanation</li>
+            </ul>
+            
+            <h3>Weather Widget</h3>
+            <ul>
+                <li>"Show weather forecast" - Display the weather forecast</li>
+                <li>"Weather in [location]" - Change location</li>
+            </ul>
+            
+            <h3>Search Widget</h3>
+            <ul>
+                <li>"Search for [query]" - Search the web</li>
+                <li>"Find information about [topic]" - Search for specific information</li>
+            </ul>
+            
+            <h3>Tasks Widget</h3>
+            <ul>
+                <li>"Add task [task description]" - Add a new task</li>
+                <li>"Complete task [number or description]" - Mark task as complete</li>
+                <li>"Delete task [number or description]" - Remove a task</li>
+                <li>"Show my tasks" - Display all tasks</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // API Keys
+        const GROQ_API_KEY = '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';
+        const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+        const OPEN_METEO_API_URL = 'https://api.open-meteo.com/v1/forecast';
+        const OPEN_METEO_GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+        const DUCKDUCKGO_API_URL = 'https://api.duckduckgo.com/';
+
+        // DOM Elements
+        const micButton = document.getElementById('micButton');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const voiceFeedback = document.getElementById('voiceFeedback');
+        const helpButton = document.getElementById('helpButton');
+        const commandsModal = document.getElementById('commandsModal');
+        const closeModal = document.getElementById('closeModal');
+        const aiConversationLog = document.getElementById('aiConversationLog');
+        const weatherLocation = document.getElementById('weatherLocation');
+        const weatherIcon = document.getElementById('weatherIcon');
+        const weatherTemp = document.getElementById('weatherTemp');
+        const weatherCondition = document.getElementById('weatherCondition');
+        const weatherHistory = document.getElementById('weatherHistory');
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const searchResults = document.getElementById('searchResults');
+        const taskList = document.getElementById('taskList');
+        const taskCount = document.getElementById('taskCount');
+
+        // Voice recognition setup
+        let recognition = null;
+        let isListening = false;
+        let conversationHistory = [];
+
+        // Initialize tasks
+        initTasks();
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                isListening = true;
+                voiceStatus.classList.add('active');
+                voiceFeedback.innerText = 'Listening...';
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = Array.from(event.results)
+                    .map(result => result[0])
+                    .map(result => result.transcript)
+                    .join('');
+                
+                voiceFeedback.innerText = transcript;
+                
+                if (event.results[0].isFinal) {
+                    processVoiceCommand(transcript);
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                isListening = false;
+                voiceStatus.classList.remove('active');
+                voiceFeedback.innerText = `Error: ${event.error}`;
+            };
+            
+            recognition.onend = () => {
+                isListening = false;
+                voiceStatus.classList.remove('active');
+                
+                if (voiceFeedback.innerText === 'Listening...') {
+                    voiceFeedback.innerText = 'No speech detected';
+                }
+            };
+        } else {
+            voiceFeedback.innerText = 'Speech recognition not supported';
+            micButton.style.opacity = 0.5;
+        }
+
+        // Toggle listening
+        micButton.addEventListener('click', () => {
+            if (!recognition) return;
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        // Process voice commands
+        async function processVoiceCommand(command) {
+            command = command.toLowerCase().trim();
+            voiceFeedback.innerText = `Processing: "${command}"`;
+            
+            try {
+                const analysis = await processWithGroq(command);
+                console.log('Command analysis:', analysis);
+                
+                await executeCommand(analysis.intent, analysis.parameters);
+            } catch (error) {
+                console.error('Error processing command:', error);
+                voiceFeedback.innerText = 'Sorry, I had trouble processing that command';
+            }
+        }
+
+        // Process commands with Groq API
+        async function processWithGroq(command) {
+            try {
+                const response = await fetch(GROQ_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama3-70b-8192',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are an AI assistant helping with a voice-controlled dashboard. 
+                                Extract the intent and parameters from voice commands.
+                                
+                                Possible intents include:
+                                - ask_ai: User wants to ask the AI assistant a question
+                                - search_web: User wants to search for information online
+                                - show_weather: User wants to see weather information
+                                - add_task: User wants to add a task to the task list
+                                - complete_task: User wants to mark a task as complete
+                                - delete_task: User wants to remove a task
+                                - show_tasks: User wants to see all tasks
+                                - expand_widget: User wants to make a widget larger
+                                - collapse_widget: User wants to return a widget to normal size
+                                - help: User wants to see available commands
+                                - close: User wants to close modals or panels
+                                
+                                Return a JSON object with "intent" and "parameters" fields.`
+                            },
+                            {
+                                role: 'user',
+                                content: `Parse this voice command and extract the intent and any parameters: "${command}". 
+                                Return ONLY a JSON object with "intent" and "parameters" fields.`
+                            }
+                        ],
+                        temperature: 0.2
+                    })
+                });
+                
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+                const jsonMatch = content.match(/({[\s\S]*})/);
+                
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                } else {
+                    const intentMatch = content.match(/"intent"\s*:\s*"([^"]+)"/);
+                    const intent = intentMatch ? intentMatch[1] : 'unknown';
+                    
+                    const parametersMatch = content.match(/"parameters"\s*:\s*({[^}]+})/);
+                    const parameters = parametersMatch ? JSON.parse(parametersMatch[1]) : {};
+                    
+                    return { intent, parameters };
+                }
+            } catch (error) {
+                console.error('Error processing with Groq:', error);
+                return { intent: 'unknown', parameters: {} };
+            }
+        }
+
+        // Execute commands based on intent
+        async function executeCommand(intent, parameters) {
+            switch (intent) {
+                case 'ask_ai':
+                    await askAI(parameters.question || 'Tell me something interesting');
+                    break;
+                    
+                case 'search_web':
+                    searchWeb(parameters.query || '');
+                    break;
+                    
+                case 'show_weather':
+                    updateWeather(parameters.location || 'New York');
+                    break;
+                    
+                case 'add_task':
+                    if (parameters.task) {
+                        addTask(parameters.task);
+                    }
+                    break;
+                    
+                case 'complete_task':
+                    completeTask(parameters.task || parameters.number);
+                    break;
+                    
+                case 'delete_task':
+                    deleteTask(parameters.task || parameters.number);
+                    break;
+                    
+                case 'show_tasks':
+                    showTasks();
+                    break;
+                    
+                case 'expand_widget':
+                    expandWidget(parameters.widget);
+                    break;
+                    
+                case 'collapse_widget':
+                    collapseWidget(parameters.widget);
+                    break;
+                    
+                case 'help':
+                    showCommandsModal();
+                    break;
+                    
+                case 'close':
+                    closeCommandsModal();
+                    break;
+                    
+                default:
+                    await askAI("I don't understand what you meant. Can you help with: " + parameters.original_command);
+            }
+        }
+
+        // Ask AI using Groq
+        async function askAI(question) {
+            const userMessage = document.createElement('div');
+            userMessage.className = 'chat-message user-message';
+            userMessage.innerHTML = `
+                <div class="message-bubble user-bubble">
+                    ${question}
+                </div>
+            `;
+            aiConversationLog.appendChild(userMessage);
+            aiConversationLog.scrollTop = aiConversationLog.scrollHeight;
+            
+            const assistantMessage = document.createElement('div');
+            assistantMessage.className = 'chat-message assistant-message';
+            assistantMessage.innerHTML = `
+                <div class="message-bubble assistant-bubble">
+                    <span class="loader"></span>
+                    <span>Thinking...</span>
+                </div>
+            `;
+            aiConversationLog.appendChild(assistantMessage);
+            aiConversationLog.scrollTop = aiConversationLog.scrollHeight;
+            
+            try {
+                conversationHistory.push({ role: 'user', content: question });
+                const limitedHistory = conversationHistory.slice(-5);
+                
+                const response = await fetch(GROQ_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama3-70b-8192',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are a helpful AI assistant embedded in a voice-controlled dashboard.
+                                Keep your responses concise but informative. Your goal is to provide helpful answers
+                                to user questions. The current date is ${new Date().toDateString()}.`
+                            },
+                            ...limitedHistory
+                        ],
+                        temperature: 0.7
+                    })
+                });
+                
+                const data = await response.json();
+                const answer = data.choices[0].message.content;
+                
+                conversationHistory.push({ role: 'assistant', content: answer });
+                
+                assistantMessage.innerHTML = `
+                    <div class="message-bubble assistant-bubble">
+                        ${answer}
+                    </div>
+                `;
+                
+                voiceFeedback.innerText = 'Answered your question';
+                highlightWidget('aiAssistantWidget');
+            } catch (error) {
+                console.error('Error asking AI:', error);
+                assistantMessage.innerHTML = `
+                    <div class="message-bubble assistant-bubble">
+                        Sorry, I had trouble generating a response. Please try again.
+                    </div>
+                `;
+                voiceFeedback.innerText = 'Error asking AI';
+            }
+            
+            aiConversationLog.scrollTop = aiConversationLog.scrollHeight;
+        }
+
+        // Search the web using DuckDuckGo Instant Answer API
+        async function searchWeb(query) {
+            if (!query) {
+                voiceFeedback.innerText = 'No search query provided';
+                return;
+            }
+            
+            searchInput.value = query;
+            voiceFeedback.innerText = `Searching for: ${query}`;
+            
+            searchResults.innerHTML = '';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'ai-thinking';
+            loadingDiv.innerHTML = '<span class="loader"></span> Searching...';
+            searchResults.appendChild(loadingDiv);
+            
+            try {
+                const response = await fetch(`${DUCKDUCKGO_API_URL}?q=${encodeURIComponent(query)}&format=json`);
+                const data = await response.json();
+                
+                searchResults.innerHTML = '';
+                
+                // Check if there's an Abstract or RelatedTopics
+                const results = [];
+                
+                if (data.AbstractText) {
+                    results.push({
+                        title: data.Heading,
+                        description: data.AbstractText,
+                        url: data.AbstractURL
+                    });
+                }
+                
+                if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+                    data.RelatedTopics.forEach(topic => {
+                        if (topic.Text && topic.FirstURL) {
+                            results.push({
+                                title: topic.Text.split(' - ')[0],
+                                description: topic.Text,
+                                url: topic.FirstURL
+                            });
+                        }
+                    });
+                }
+                
+                if (results.length === 0) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'search-result';
+                    noResultsDiv.innerHTML = `
+                        <h4>No results found</h4>
+                        <p>Try a different search query.</p>
+                    `;
+                    searchResults.appendChild(noResultsDiv);
+                } else {
+                    results.slice(0, 3).forEach(result => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'search-result';
+                        resultDiv.innerHTML = `
+                            <h4><a href="${result.url}" target="_blank">${result.title}</a></h4>
+                            <p>${result.description}</p>
+                        `;
+                        searchResults.appendChild(resultDiv);
+                    });
+                }
+                
+                voiceFeedback.innerText = `Found ${results.length} results for "${query}"`;
+                highlightWidget('searchWidget');
+            } catch (error) {
+                console.error('Error searching web:', error);
+                searchResults.innerHTML = '';
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'search-result';
+                errorDiv.innerHTML = `
+                    <h4>Error</h4>
+                    <p>Unable to fetch search results. Please try again.</p>
+                `;
+                searchResults.appendChild(errorDiv);
+                voiceFeedback.innerText = 'Error fetching search results';
+            }
+        }
+
+        // Update weather using Open-Meteo
+        async function updateWeather(location) {
+            voiceFeedback.innerText = location ? 
+                `Updating weather for ${location}` : 
+                'Updating weather';
+                
+            weatherLocation.innerText = location ? 
+                `📍 ${location}` : 
+                '📍 Current Location';
+                
+            try {
+                // Step 1: Geocode the location to get latitude and longitude
+                const geocodeResponse = await fetch(`${OPEN_METEO_GEOCODING_URL}?name=${encodeURIComponent(location || 'New York')}&count=1`);
+                const geocodeData = await geocodeResponse.json();
+                
+                if (!geocodeData.results || geocodeData.results.length === 0) {
+                    voiceFeedback.innerText = 'Location not found';
+                    weatherCondition.innerText = 'Unable to fetch weather';
+                    return;
+                }
+                
+                const { latitude, longitude } = geocodeData.results[0];
+                
+                // Step 2: Fetch weather data
+                const weatherResponse = await fetch(`${OPEN_METEO_API_URL}?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=fahrenheit`);
+                const weatherData = await weatherResponse.json();
+                
+                if (weatherData.current_weather) {
+                    const temp = Math.round(weatherData.current_weather.temperature);
+                    const weatherCode = weatherData.current_weather.weathercode;
+                    
+                    // WMO weather codes to icons and conditions
+                    const weatherMap = {
+                        0: { icon: '☀️', condition: 'Clear Sky' },
+                        1: { icon: '⛅', condition: 'Mainly Clear' },
+                        2: { icon: '⛅', condition: 'Partly Cloudy' },
+                        3: { icon: '☁️', condition: 'Overcast' },
+                        45: { icon: '🌫️', condition: 'Fog' },
+                        48: { icon: '🌫️', condition: 'Depositing Rime Fog' },
+                        51: { icon: '🌦️', condition: 'Light Drizzle' },
+                        53: { icon: '🌦️', condition: 'Moderate Drizzle' },
+                        55: { icon: '🌦️', condition: 'Dense Drizzle' },
+                        61: { icon: '🌧️', condition: 'Light Rain' },
+                        63: { icon: '🌧️', condition: 'Moderate Rain' },
+                        65: { icon: '🌧️', condition: 'Heavy Rain' },
+                        71: { icon: '❄️', condition: 'Light Snow' },
+                        73: { icon: '❄️', condition: 'Moderate Snow' },
+                        75: { icon: '❄️', condition: 'Heavy Snow' },
+                        80: { icon: '🌦️', condition: 'Light Rain Showers' },
+                        81: { icon: '🌦️', condition: 'Moderate Rain Showers' },
+                        82: { icon: '🌦️', condition: 'Violent Rain Showers' },
+                        95: { icon: '⛈️', condition: 'Thunderstorm' }
+                    };
+                    
+                    const weatherInfo = weatherMap[weatherCode] || { icon: '🌍', condition: 'Unknown' };
+                    
+                    weatherIcon.innerText = weatherInfo.icon;
+                    weatherTemp.innerText = `${temp}°F`;
+                    weatherCondition.innerText = weatherInfo.condition;
+                    
+                    // Update history
+                    const today = new Date().toLocaleDateString();
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerText = `${today}: ${temp}°F, ${weatherInfo.condition}`;
+                    weatherHistory.prepend(historyItem);
+                    while (weatherHistory.children.length > 3) {
+                        weatherHistory.removeChild(weatherHistory.lastChild);
+                    }
+                    
+                    highlightWidget('weatherWidget');
+                } else {
+                    voiceFeedback.innerText = 'Error fetching weather data';
+                    weatherCondition.innerText = 'Unable to fetch weather';
+                }
+            } catch (error) {
+                console.error('Error fetching weather:', error);
+                voiceFeedback.innerText = 'Error fetching weather data';
+                weatherCondition.innerText = 'Unable to fetch weather';
+            }
+        }
+
+        // Task functions
+        function initTasks() {
+            taskList.addEventListener('change', function(e) {
+                if (e.target.classList.contains('task-checkbox')) {
+                    const taskItem = e.target.closest('.task-item');
+                    const taskText = taskItem.querySelector('.task-text');
+                    
+                    if (e.target.checked) {
+                        taskText.classList.add('task-completed');
+                    } else {
+                        taskText.classList.remove('task-completed');
+                    }
+                    
+                    updateTaskCount();
+                }
+            });
+            
+            taskList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('task-delete')) {
+                    const taskItem = e.target.closest('.task-item');
+                    taskItem.remove();
+                    updateTaskCount();
+                }
+            });
+            
+            updateTaskCount();
+        }
+        
+        function addTask(taskText) {
+            const newTask = document.createElement('li');
+            newTask.className = 'task-item';
+            newTask.innerHTML = `
+                <input type="checkbox" class="task-checkbox">
+                <span class="task-text">${taskText}</span>
+                <span class="task-delete">×</span>
+            `;
+            taskList.appendChild(newTask);
+            
+            voiceFeedback.innerText = `Added task: ${taskText}`;
+            updateTaskCount();
+            highlightWidget('tasksWidget');
+        }
+        
+        function completeTask(taskIdentifier) {
+            const tasks = Array.from(taskList.querySelectorAll('.task-item'));
+            let found = false;
+            
+            if (typeof taskIdentifier === 'number' || !isNaN(taskIdentifier)) {
+                const index = parseInt(taskIdentifier) - 1;
+                if (index >= 0 && index < tasks.length) {
+                    const checkbox = tasks[index].querySelector('.task-checkbox');
+                    const taskText = tasks[index].querySelector('.task-text');
+                    checkbox.checked = true;
+                    taskText.classList.add('task-completed');
+                    found = true;
+                    voiceFeedback.innerText = `Completed task ${index + 1}`;
+                }
+            } else if (typeof taskIdentifier === 'string') {
+                for (const task of tasks) {
+                    const taskText = task.querySelector('.task-text').innerText.toLowerCase();
+                    if (taskText.includes(taskIdentifier.toLowerCase())) {
+                        const checkbox = task.querySelector('.task-checkbox');
+                        const textElement = task.querySelector('.task-text');
+                        checkbox.checked = true;
+                        textElement.classList.add('task-completed');
+                        found = true;
+                        voiceFeedback.innerText = `Completed task: "${taskText}"`;
+                        break;
+                    }
+                }
+            }
+            
+            if (!found) {
+                voiceFeedback.innerText = 'Could not find that task';
+            }
+            
+            updateTaskCount();
+            highlightWidget('tasksWidget');
+        }
+        
+        function deleteTask(taskIdentifier) {
+            const tasks = Array.from(taskList.querySelectorAll('.task-item'));
+            let found = false;
+            
+            if (typeof taskIdentifier === 'number' || !isNaN(taskIdentifier)) {
+                const index = parseInt(taskIdentifier) - 1;
+                if (index >= 0 && index < tasks.length) {
+                    tasks[index].remove();
+                    found = true;
+                    voiceFeedback.innerText = `Deleted task ${index + 1}`;
+                }
+            } else if (typeof taskIdentifier === 'string') {
+                for (const task of tasks) {
+                    const taskText = task.querySelector('.task-text').innerText.toLowerCase();
+                    if (taskText.includes(taskIdentifier.toLowerCase())) {
+                        task.remove();
+                        found = true;
+                        voiceFeedback.innerText = `Deleted task: "${taskText}"`;
+                        break;
+                    }
+                }
+            }
+            
+            if (!found) {
+                voiceFeedback.innerText = 'Could not find that task';
+            }
+            
+            updateTaskCount();
+            highlightWidget('tasksWidget');
+        }
+        
+        function showTasks() {
+            voiceFeedback.innerText = 'Showing your tasks';
+            highlightWidget('tasksWidget');
+        }
+        
+        function updateTaskCount() {
+            const totalTasks = taskList.querySelectorAll('.task-item').length;
+            const completedTasks = taskList.querySelectorAll('.task-checkbox:checked').length;
+            const remainingTasks = totalTasks - completedTasks;
+            
+            taskCount.innerText = `${remainingTasks} Remaining`;
+        }
+
+        // Widget manipulation
+        function expandWidget(widgetName) {
+            const widgetMap = {
+                'ai': 'aiAssistantWidget',
+                'assistant': 'aiAssistantWidget',
+                'weather': 'weatherWidget',
+                'search': 'searchWidget',
+                'tasks': 'tasksWidget'
+            };
+            
+            const widgetId = widgetMap[widgetName.toLowerCase()] || null;
+            
+            if (widgetId) {
+                const widget = document.getElementById(widgetId);
+                if (widget) {
+                    document.querySelectorAll('.widget').forEach(w => w.classList.remove('expanded'));
+                    widget.classList.add('expanded');
+                    voiceFeedback.innerText = `Expanded ${widgetName} widget`;
+                }
+            } else {
+                voiceFeedback.innerText = `Could not find widget: ${widgetName}`;
+            }
+        }
+        
+        function collapseWidget(widgetName) {
+            const widgetMap = {
+                'ai': 'aiAssistantWidget',
+                'assistant': 'aiAssistantWidget',
+                'weather': 'weatherWidget',
+                'search': 'searchWidget',
+                'tasks': 'tasksWidget'
+            };
+            
+            const widgetId = widgetMap[widgetName.toLowerCase()] || null;
+            
+            if (widgetId) {
+                const widget = document.getElementById(widgetId);
+                if (widget) {
+                    widget.classList.remove('expanded');
+                    voiceFeedback.innerText = `Collapsed ${widgetName} widget`;
+                }
+            } else {
+                voiceFeedback.innerText = `Could not find widget: ${widgetName}`;
+            }
+        }
+        
+        function highlightWidget(widgetId) {
+            const widget = document.getElementById(widgetId);
+            if (widget) {
+                widget.style.boxShadow = '0 0 10px #4a6cf7';
+                setTimeout(() => {
+                    widget.style.boxShadow = '';
+                }, 2000);
+            }
+        }
+
+        // Modal functions
+        function showCommandsModal() {
+            commandsModal.style.display = 'flex';
+            voiceFeedback.innerText = 'Showing available commands';
+        }
+        
+        function closeCommandsModal() {
+            commandsModal.style.display = 'none';
+            voiceFeedback.innerText = 'Closed dialog';
+        }
+
+        // Event Listeners
+        helpButton.addEventListener('click', showCommandsModal);
+        closeModal.addEventListener('click', closeCommandsModal);
+        
+        searchButton.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (query) {
+                searchWeb(query);
+            }
+        });
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (query) {
+                    searchWeb(query);
+                }
+            }
+        });
+
+        // Initialize with real weather
+        updateWeather('New York');
+        
+        // Welcome message
+        setTimeout(() => {
+            voiceFeedback.innerText = 'Welcome to AI Voice Dashboard';
+        }, 1000);
+    </script>
+</body>
+</html>
